@@ -7,7 +7,7 @@ from components.chatUI import render_chat
 st.set_page_config(page_title="AI Pocket MDT",layout="wide")
 st.title(" 🩺 Multi-Disciplinary Medical Assistant")
 
-
+# Updated to fix response handling - v1.1
 render_uploader()
 render_chat()
 render_history_download()
