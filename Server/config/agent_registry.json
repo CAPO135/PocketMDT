@@ -1,0 +1,72 @@
+{
+  "agents": {
+    "GastroenterologistAgent": {
+      "module_path": "modules.gastroenterologist.agent",
+      "class_name": "GastroenterologistAgent",
+      "description": "Analyzes gut health, liver enzyme patterns, microbiome status, GI inflammation, malabsorption, and digestive symptoms. Focuses on liver markers (AST, ALT, ALP, GGT, bilirubin), stool results, GI-related symptoms, and medication impact on the digestive system.",
+      "enabled": true,
+      "priority": 1,
+      "tags": [
+        "gastroenterology",
+        "liver",
+        "digestive",
+        "GI",
+        "enzymes"
+      ]
+    },
+    "SummaryAgent": {
+      "module_path": "modules.summary.agent",
+      "class_name": "SummaryAgent",
+      "description": "Compiles insights from multiple domain-specific clinical specialists into a single coherent, patient-friendly report.",
+      "enabled": true,
+      "priority": 0,
+      "tags": [
+        "summary",
+        "compilation",
+        "report"
+      ],
+      "is_summary_agent": true
+    },
+    "EndocrinologistAgent": {
+      "module_path": "modules.endocrinologist.agent",
+      "class_name": "EndocrinologistAgent",
+      "description": "Evaluates hormonal and endocrine system health including thyroid, adrenal, pancreatic, reproductive, and pituitary axes. Analyzes labs such as TSH, Free T4, Free T3, cortisol, insulin, A1C, testosterone, and estrogen. Assesses conditions like hypothyroidism, insulin resistance, adrenal fatigue, and hormone imbalance. Links lab findings to symptoms such as fatigue, weight changes, sleep disruption, menstrual irregularity, and metabolic dysfunction.",
+      "enabled": true,
+      "priority": 1,
+      "tags": [
+        "endocrinology,hormones,thyroid,metabolism,adrenal,reproductive"
+      ],
+      "is_summary_agent": false
+    },
+    "GeneralistAgent": {
+      "module_path": "modules.generalist.agent",
+      "class_name": "GeneralistAgent",
+      "description": "A general medical AI assistant that can answer general questions about medical documents, provide overviews of health data, explain medical terms, and offer general health insights. Handles questions that don't require specialized expertise from specific medical specialists.",
+      "enabled": true,
+      "priority": 0,
+      "tags": [
+        "general",
+        "overview",
+        "education",
+        "interpretation",
+        "fallback"
+      ],
+      "is_summary_agent": false
+    }
+  },
+  "settings": {
+    "default_confidence_threshold": 0.75,
+    "generalist_confidence_threshold": 0.3,
+    "max_agents_per_request": 3,
+    "embedding_model": "text-embedding-ada-002",
+    "summary_agent_name": "SummaryAgent",
+    "enable_dynamic_loading": true,
+    "fallback_questions": [
+      "What specific symptoms are you experiencing?",
+      "Do you have any recent test results or lab work?",
+      "Which part of your health are you most concerned about?",
+      "Are you taking any medications currently?",
+      "What prompted you to seek medical advice today?"
+    ]
+  }
+}

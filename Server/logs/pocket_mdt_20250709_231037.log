@@ -1,0 +1,4 @@
+[2025-07-09 23:10:47,359] [INFO] --- [user query: What is the name of the patient?]
+[2025-07-09 23:10:48,914] [INFO] --- [Vector store query returned 3 matches]
+[2025-07-09 23:10:48,919] [INFO] --- [Retrieved 3 relevant documents for context]
+[2025-07-09 23:10:54,450] [INFO] --- [query successful]
