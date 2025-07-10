@@ -24,5 +24,5 @@ Output Format:
             input_data += f"\n[{agent_name}]\n{output}\n"
 
         prompt = self.prompt_template.format(agent_outputs=input_data.strip())
-        response = self.llm.predict(prompt)
-        return response
+        response = self.llm.invoke(prompt)
+        return response.content

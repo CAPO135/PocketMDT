@@ -34,8 +34,8 @@ Note: If the uploaded documents contain relevant lab results, test data, or medi
         user_input = context.get("user_input", "No user question provided.")
         document_context = context.get("document_context", "No document context provided.")
         prompt = self.prompt_template.format(user_input=user_input, document_context=document_context)
-        response = self.llm.predict(prompt)
-        return response
+        response = self.llm.invoke(prompt)
+        return response.content
 
 
 
