@@ -8,7 +8,14 @@ wheels/
 
 # Virtual environments
 .venv
-/Server/.env
 test.py
 /Server/read_docs/
+
+# Environment variables and secrets
+.env
+*.env
+/Server/.env
+.env.local
+.env.production
+.env.development
 
