@@ -31,12 +31,31 @@ existing_indexes=[i["name"] for i in pc.list_indexes()]
 if PINECONE_INDEX_NAME not in existing_indexes:
     pc.create_index(
         name=PINECONE_INDEX_NAME,
-        dimension=1024,
+        dimension=3072,  # Updated to match text-embedding-3-large
         metric="cosine",
         spec=spec
     )
     while not pc.describe_index(PINECONE_INDEX_NAME).status["ready"]:
         time.sleep(1)
+else:
+    # Check if existing index has correct dimension
+    index_info = pc.describe_index(PINECONE_INDEX_NAME)
+    current_dimension = index_info.dimension
+    if current_dimension != 3072:
+        print(f"⚠️  Existing index has dimension {current_dimension}, but text-embedding-3-large requires 3072")
+        print("🗑️  Deleting existing index to recreate with correct dimension...")
+        pc.delete_index(PINECONE_INDEX_NAME)
+        time.sleep(5)  # Wait for deletion to complete
+        
+        pc.create_index(
+            name=PINECONE_INDEX_NAME,
+            dimension=3072,
+            metric="cosine",
+            spec=spec
+        )
+        while not pc.describe_index(PINECONE_INDEX_NAME).status["ready"]:
+            time.sleep(1)
+        print("✅ Index recreated with correct dimension")
 
 
 index=pc.Index(PINECONE_INDEX_NAME)
@@ -61,7 +80,13 @@ def load_vectorstore(uploaded_files):
         chunks = splitter.split_documents(documents)
 
         texts = [chunk.page_content for chunk in chunks]
-        metadatas = [chunk.metadata for chunk in chunks]
+        # Include the text content in metadata for retrieval
+        metadatas = []
+        for chunk in chunks:
+            metadata = chunk.metadata.copy()
+            metadata["text"] = chunk.page_content  # Add text content to metadata
+            metadatas.append(metadata)
+        
         ids = [f"{Path(file_path).stem}-{i}" for i in range(len(chunks))]
 
         print(f"🔍 Embedding {len(texts)} chunks...")
