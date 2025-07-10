@@ -21,7 +21,17 @@ def render_chat():
         response=ask_question(user_input)
         if response.status_code==200:
             data=response.json()
-            answer=data["response"]
+            answer = (
+                data.get("response") or
+                data.get("summary") or
+                data.get("message") or
+                "Sorry, I couldn't process your request."
+            )
+            # Show follow-up questions if clarification is required
+            if data.get("clarification_required"):
+                follow_ups = data.get("follow_up_questions", [])
+                if follow_ups:
+                    answer += "\n\n**Follow-up questions:**\n" + "\n".join(f"- {q}" for q in follow_ups)
             sources=data.get("sources",[])
             st.chat_message("assistant").markdown(answer)
             # if sources:
