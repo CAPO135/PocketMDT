@@ -11,30 +11,98 @@
         "liver",
         "digestive",
         "GI",
-        "enzymes"
+        "enzymes",
+        "gut",
+        "microbiome"
       ]
-    },
-    "SummaryAgent": {
-      "module_path": "modules.summary.agent",
-      "class_name": "SummaryAgent",
-      "description": "Compiles insights from multiple domain-specific clinical specialists into a single coherent, patient-friendly report.",
-      "enabled": true,
-      "priority": 0,
-      "tags": [
-        "summary",
-        "compilation",
-        "report"
-      ],
-      "is_summary_agent": true
     },
     "EndocrinologistAgent": {
       "module_path": "modules.endocrinologist.agent",
       "class_name": "EndocrinologistAgent",
-      "description": "Evaluates hormonal and endocrine system health including thyroid, adrenal, pancreatic, reproductive, and pituitary axes. Analyzes labs such as TSH, Free T4, Free T3, cortisol, insulin, A1C, testosterone, and estrogen. Assesses conditions like hypothyroidism, insulin resistance, adrenal fatigue, and hormone imbalance. Links lab findings to symptoms such as fatigue, weight changes, sleep disruption, menstrual irregularity, and metabolic dysfunction.",
+      "description": "Evaluates hormonal and endocrine system health including thyroid, adrenal, pancreatic, reproductive, and pituitary axes. Analyzes labs such as TSH, Free T4, Free T3, cortisol, insulin, A1C, testosterone, and estrogen. Assesses conditions like hypothyroidism, insulin resistance, adrenal fatigue, and hormone imbalance.",
       "enabled": true,
       "priority": 1,
       "tags": [
-        "endocrinology,hormones,thyroid,metabolism,adrenal,reproductive"
+        "endocrinology",
+        "hormones",
+        "thyroid",
+        "metabolism",
+        "adrenal",
+        "reproductive",
+        "diabetes",
+        "insulin"
+      ],
+      "is_summary_agent": false
+    },
+    "CardiologistAgent": {
+      "module_path": "modules.cardiologist.agent",
+      "class_name": "CardiologistAgent",
+      "description": "Analyzes cardiovascular health including heart rhythm, blood pressure, lipid profiles, and cardiac function. Evaluates conditions like hypertension, arrhythmias, coronary artery disease, heart failure, and valvular disease. Interprets ECGs, echocardiograms, stress tests, and cardiac biomarkers.",
+      "enabled": true,
+      "priority": 1,
+      "tags": [
+        "cardiology",
+        "heart",
+        "blood pressure",
+        "cholesterol",
+        "cardiovascular",
+        "ECG",
+        "cardiac",
+        "hypertension"
+      ],
+      "is_summary_agent": false
+    },
+    "NeurologistAgent": {
+      "module_path": "modules.neurologist.agent",
+      "class_name": "NeurologistAgent",
+      "description": "Analyzes neurological health including brain function, cognitive assessment, and nervous system disorders. Evaluates conditions like dementia, seizures, migraines, neuropathy, and movement disorders. Interprets neuroimaging, EEG, nerve conduction studies, and cognitive assessments.",
+      "enabled": true,
+      "priority": 1,
+      "tags": [
+        "neurology",
+        "brain",
+        "cognitive",
+        "neurological",
+        "headache",
+        "seizure",
+        "neuropathy",
+        "memory"
+      ],
+      "is_summary_agent": false
+    },
+    "NephrologistAgent": {
+      "module_path": "modules.nephrologist.agent",
+      "class_name": "NephrologistAgent",
+      "description": "Analyzes kidney function, fluid balance, and renal health including creatinine, BUN, GFR, and electrolyte levels. Evaluates conditions like chronic kidney disease, acute kidney injury, hypertension, and electrolyte imbalances. Interprets urinalysis and kidney imaging.",
+      "enabled": true,
+      "priority": 1,
+      "tags": [
+        "nephrology",
+        "kidney",
+        "renal",
+        "creatinine",
+        "electrolytes",
+        "GFR",
+        "urinalysis",
+        "fluid balance"
+      ],
+      "is_summary_agent": false
+    },
+    "OphthalmologistAgent": {
+      "module_path": "modules.ophthalmologist.agent",
+      "class_name": "OphthalmologistAgent",
+      "description": "Analyzes eye health, visual function, and ocular conditions including vision assessments, eye pressure, retinal health, and optic nerve function. Evaluates conditions like glaucoma, diabetic retinopathy, macular degeneration, and cataracts. Links eye findings to systemic conditions.",
+      "enabled": true,
+      "priority": 1,
+      "tags": [
+        "ophthalmology",
+        "eye",
+        "vision",
+        "retina",
+        "glaucoma",
+        "diabetic retinopathy",
+        "visual",
+        "ocular"
       ],
       "is_summary_agent": false
     },
@@ -49,24 +117,54 @@
         "overview",
         "education",
         "interpretation",
-        "fallback"
+        "fallback",
+        "primary care"
       ],
       "is_summary_agent": false
+    },
+    "SummaryAgent": {
+      "module_path": "modules.summary.agent",
+      "class_name": "SummaryAgent",
+      "description": "Compiles insights from multiple domain-specific clinical specialists into a single coherent, patient-friendly report. Synthesizes findings across all medical specialties and provides comprehensive health overview.",
+      "enabled": true,
+      "priority": 0,
+      "tags": [
+        "summary",
+        "compilation",
+        "report",
+        "synthesis",
+        "comprehensive"
+      ],
+      "is_summary_agent": true
     }
   },
   "settings": {
     "default_confidence_threshold": 0.75,
     "generalist_confidence_threshold": 0.3,
-    "max_agents_per_request": 3,
+    "max_agents_per_request": 5,
     "embedding_model": "text-embedding-ada-002",
     "summary_agent_name": "SummaryAgent",
     "enable_dynamic_loading": true,
+    "enable_cross_specialty_correlation": true,
+    "enable_trend_analysis": true,
     "fallback_questions": [
       "What specific symptoms are you experiencing?",
       "Do you have any recent test results or lab work?",
       "Which part of your health are you most concerned about?",
       "Are you taking any medications currently?",
-      "What prompted you to seek medical advice today?"
-    ]
+      "What prompted you to seek medical advice today?",
+      "Do you have any family history of medical conditions?",
+      "Have you noticed any changes in your health recently?"
+    ],
+    "agent_selection_strategy": "relevance_based",
+    "enable_intelligent_routing": true,
+    "minimum_document_context_length": 100,
+    "cross_specialty_keywords": {
+      "diabetes": ["endocrinology", "ophthalmology", "nephrology", "cardiology"],
+      "hypertension": ["cardiology", "nephrology", "ophthalmology", "neurology"],
+      "autoimmune": ["neurology", "ophthalmology", "nephrology", "gastroenterology"],
+      "metabolic": ["endocrinology", "cardiology", "nephrology"],
+      "inflammation": ["gastroenterology", "cardiology", "neurology", "ophthalmology"]
+    }
   }
 }

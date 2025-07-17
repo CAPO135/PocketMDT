@@ -194,7 +194,7 @@ Format as a JSON array of strings.
             ]
 
     def route_request_with_embeddings(self, user_input: str, context: dict) -> Tuple[List[str], float]:
-        """Determine most relevant agent(s) using semantic matching"""
+        """Determine most relevant agent(s) using semantic matching and cross-specialty correlation"""
         user_input_lower = user_input.lower()
         available_agents = list(self.agent_loader.get_enabled_agents().keys())
         
@@ -203,8 +203,31 @@ Format as a JSON array of strings.
         available_agents = [agent for agent in available_agents if agent != summary_agent_name]
 
         # Full report logic
-        if "full report" in user_input_lower or "health summary" in user_input_lower:
+        if "full report" in user_input_lower or "health summary" in user_input_lower or "comprehensive" in user_input_lower:
             return available_agents, 1.0
+
+        # Check for cross-specialty keywords that might require multiple agents
+        cross_specialty_keywords = self.agent_loader.config.get("settings", {}).get("cross_specialty_keywords", {})
+        selected_agents = []
+        
+        for keyword, related_specialties in cross_specialty_keywords.items():
+            if keyword in user_input_lower:
+                for specialty in related_specialties:
+                    # Map specialty names to agent names
+                    specialty_agent_map = {
+                        "cardiology": "CardiologistAgent",
+                        "endocrinology": "EndocrinologistAgent", 
+                        "gastroenterology": "GastroenterologistAgent",
+                        "nephrology": "NephrologistAgent",
+                        "neurology": "NeurologistAgent",
+                        "ophthalmology": "OphthalmologistAgent"
+                    }
+                    agent_name = specialty_agent_map.get(specialty)
+                    if agent_name and agent_name in available_agents and agent_name not in selected_agents:
+                        selected_agents.append(agent_name)
+        
+        if selected_agents:
+            return selected_agents, 0.9  # High confidence for cross-specialty matches
 
         # Check for general questions that might be better handled by GeneralistAgent
         general_question_keywords = [
@@ -230,7 +253,16 @@ Format as a JSON array of strings.
                 similarities.append((agent_name, score))
 
             similarities.sort(key=lambda x: x[1], reverse=True)
-            top_agent, top_score = similarities[0] if similarities else (None, 0)
+            
+            # Get top scoring agents
+            top_agents = []
+            max_agents = self.agent_loader.config.get("settings", {}).get("max_agents_per_request", 3)
+            
+            for agent_name, score in similarities[:max_agents]:
+                if score > 0.7:  # Lower threshold to allow multiple specialists
+                    top_agents.append(agent_name)
+            
+            top_score = similarities[0][1] if similarities else 0.0
 
             # If it's a general question and no specialist has high confidence, prefer GeneralistAgent
             if is_general_question and top_score < 0.8:
@@ -239,7 +271,7 @@ Format as a JSON array of strings.
                 if generalist_score > generalist_threshold:
                     return ["GeneralistAgent"], generalist_score
 
-            return [top_agent] if top_score > 0.75 and top_agent is not None else [], top_score
+            return top_agents if top_agents else [], top_score
             
         except Exception as e:
             logger.error(f"Error in semantic routing: {e}")
