@@ -19,7 +19,7 @@ load_dotenv()
 OPENAI_API_KEY=os.getenv("OPENAI_API_KEY")
 PINECONE_API_KEY=os.getenv("PINECONE_API_KEY")
 PINECONE_ENV="us-east-1"
-PINECONE_INDEX_NAME = "labworkindex"
+PINECONE_INDEX_NAME = "pocketmdtpdfs"
 
 if OPENAI_API_KEY is not None:
     os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
