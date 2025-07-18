@@ -1,5 +1,6 @@
 import os
 import time
+import warnings
 from pathlib import Path
 from dotenv import load_dotenv
 from tqdm.auto import tqdm
@@ -7,6 +8,10 @@ from pinecone import Pinecone, ServerlessSpec
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
+from langchain_core.documents import Document
+
+# Suppress pypdf page label warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="pypdf._page_labels")
 
 load_dotenv()
 
@@ -60,6 +65,39 @@ else:
 
 index=pc.Index(PINECONE_INDEX_NAME)
 
+def load_pdf_with_fallback(file_path):
+    """Load PDF with fallback to alternative method if PyPDFLoader fails"""
+    try:
+        # Try PyPDFLoader first
+        loader = PyPDFLoader(file_path)
+        documents = loader.load()
+        print(f"📄 Successfully loaded {len(documents)} pages from {Path(file_path).name} using PyPDFLoader")
+        return documents
+    except Exception as e:
+        print(f"⚠️  PyPDFLoader failed for {Path(file_path).name}: {e}")
+        try:
+            # Fallback to PyMuPDF if available
+            import fitz
+            doc = fitz.open(file_path)
+            documents = []
+            for page_num in range(len(doc)):
+                page = doc.load_page(page_num)
+                text = page.get_text()
+                if text.strip():  # Only add non-empty pages
+                    documents.append(Document(
+                        page_content=text,
+                        metadata={"source": file_path, "page": page_num + 1}
+                    ))
+            doc.close()
+            print(f"📄 Successfully loaded {len(documents)} pages from {Path(file_path).name} using PyMuPDF fallback")
+            return documents
+        except ImportError:
+            print(f"❌ PyMuPDF not available for fallback. Skipping {Path(file_path).name}")
+            return []
+        except Exception as e2:
+            print(f"❌ Both PDF loaders failed for {Path(file_path).name}: {e2}")
+            return []
+
 # load,split,embed and upsert pdf docs content
 
 def load_vectorstore(uploaded_files):
@@ -73,8 +111,11 @@ def load_vectorstore(uploaded_files):
         file_paths.append(str(save_path))
 
     for file_path in file_paths:
-        loader = PyPDFLoader(file_path)
-        documents = loader.load()
+        documents = load_pdf_with_fallback(file_path)
+        
+        if not documents:
+            print(f"⚠️  Skipping {Path(file_path).name} - no content extracted")
+            continue
 
         splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         chunks = splitter.split_documents(documents)
