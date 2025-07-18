@@ -9,6 +9,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
+from datetime import datetime
 
 # Suppress pypdf page label warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pypdf._page_labels")
@@ -98,19 +99,54 @@ def load_pdf_with_fallback(file_path):
             print(f"❌ Both PDF loaders failed for {Path(file_path).name}: {e2}")
             return []
 
-# load,split,embed and upsert pdf docs content
+def clear_user_documents(user_id: str):
+    """Clear all documents for a specific user from the vector store"""
+    try:
+        print(f"🗑️  Clearing documents for user: {user_id}")
+        
+        # Query for all vectors belonging to this user
+        # Note: This is a simplified approach. In production, you might want to use metadata filtering
+        # or implement a more sophisticated deletion strategy
+        
+        # For now, we'll use a filter to delete user-specific documents
+        # This requires the index to support metadata filtering
+        try:
+            # Delete vectors with user_id in metadata
+            index.delete(filter={"user_id": user_id})
+            print(f"✅ Cleared documents for user: {user_id}")
+        except Exception as e:
+            print(f"⚠️  Could not use metadata filter deletion: {e}")
+            print("⚠️  Consider recreating index with metadata filtering support")
+            
+    except Exception as e:
+        print(f"⚠️  Warning: Could not clear documents for user {user_id}: {e}")
 
-def load_vectorstore(uploaded_files):
+def load_vectorstore(uploaded_files, user_id: str):
+    """
+    Load documents into vector store with user isolation
+    
+    Args:
+        uploaded_files: List of uploaded file objects
+        user_id: Unique identifier for the user uploading documents
+    """
     embed_model = OpenAIEmbeddings(model="text-embedding-3-large")
     file_paths = []
+    
+    # Generate a unique session ID for this upload batch
+    session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    print(f"🆔 Starting upload session for user {user_id}: {session_id}")
+
+    # Clear existing documents for this user only
+    clear_user_documents(user_id)
 
     for file in uploaded_files:
-        save_path = Path(UPLOAD_DIR) / file.filename
+        save_path = Path(UPLOAD_DIR) / f"{user_id}_{file.filename}"
         with open(save_path, "wb") as f:
             f.write(file.file.read())
         file_paths.append(str(save_path))
 
     for file_path in file_paths:
+        print(f"\n📁 Processing for user {user_id}: {Path(file_path).name}")
         documents = load_pdf_with_fallback(file_path)
         
         if not documents:
@@ -126,16 +162,58 @@ def load_vectorstore(uploaded_files):
         for chunk in chunks:
             metadata = chunk.metadata.copy()
             metadata["text"] = chunk.page_content  # Add text content to metadata
+            metadata["filename"] = Path(file_path).name  # Add filename for tracking
+            metadata["upload_session"] = session_id  # Add session ID for tracking
+            metadata["user_id"] = user_id  # Add user ID for isolation
             metadatas.append(metadata)
         
-        ids = [f"{Path(file_path).stem}-{i}" for i in range(len(chunks))]
+        # Generate unique IDs with user_id and timestamp to prevent conflicts
+        ids = [f"{user_id}_{session_id}_{Path(file_path).stem}_{i}" for i in range(len(chunks))]
 
-        print(f"🔍 Embedding {len(texts)} chunks...")
+        print(f"🔍 Embedding {len(texts)} chunks from {Path(file_path).name} for user {user_id}...")
         embeddings = embed_model.embed_documents(texts)
 
-        print("📤 Uploading to Pinecone...")
-        with tqdm(total=len(embeddings), desc="Upserting to Pinecone") as progress:
+        print(f"📤 Uploading {Path(file_path).name} to Pinecone for user {user_id}...")
+        with tqdm(total=len(embeddings), desc=f"Upserting {Path(file_path).name}") as progress:
             index.upsert(vectors=list(zip(ids, embeddings, metadatas)))
             progress.update(len(embeddings))
 
-        print(f"✅ Upload complete for {file_path}")
+        print(f"✅ Upload complete for {Path(file_path).name} (user: {user_id})")
+    
+    print(f"\n🎉 All documents uploaded successfully for user {user_id} in session: {session_id}")
+    print(f"📊 Total files processed: {len(file_paths)}")
+
+def query_user_documents(query_embedding, user_id: str, top_k: int = 5):
+    """
+    Query documents for a specific user only
+    
+    Args:
+        query_embedding: The embedded query vector
+        user_id: User ID to filter documents for
+        top_k: Number of results to return
+        
+    Returns:
+        List of matching documents for the user only
+    """
+    try:
+        # Query with user_id filter to ensure only user's documents are returned
+        res = index.query(
+            vector=query_embedding, 
+            top_k=top_k, 
+            include_metadata=True,
+            filter={"user_id": user_id}  # This ensures user isolation
+        )
+        return res.get("matches", [])
+    except Exception as e:
+        print(f"⚠️  Warning: Could not use metadata filter for user {user_id}: {e}")
+        # Fallback: query without filter (less secure, but functional)
+        print("⚠️  Falling back to unfiltered query - consider enabling metadata filtering")
+        res = index.query(
+            vector=query_embedding, 
+            top_k=top_k, 
+            include_metadata=True
+        )
+        # Manually filter results by user_id
+        matches = res.get("matches", [])
+        user_matches = [match for match in matches if match.get("metadata", {}).get("user_id") == user_id]
+        return user_matches

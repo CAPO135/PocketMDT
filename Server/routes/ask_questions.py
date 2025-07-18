@@ -14,22 +14,31 @@ import json
 router=APIRouter()
 
 @router.post("/ask/")
-async def ask_question(question: str = Form(...), patient_history: Optional[str] = Form(None)):
+async def ask_question(
+    question: str = Form(...), 
+    user_id: str = Form(..., description="Unique identifier for the user asking the question"),
+    patient_history: Optional[str] = Form(None)
+):
     try:
-        logger.info(f"user query: {question}")
-        logger.info(f"patient history provided: {patient_history is not None}")
+        logger.info(f"user query from user {user_id}: {question}")
+        logger.info(f"patient history provided for user {user_id}: {patient_history is not None}")
 
         # Embed model + Pinecone setup
         pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
         index = pc.Index(os.environ["PINECONE_INDEX_NAME"])
         embed_model = OpenAIEmbeddings(model="text-embedding-3-large")
         embedded_query = embed_model.embed_query(question)
-        res = index.query(vector=embedded_query, top_k=5, include_metadata=True)  # Increased top_k for better coverage
+        
+        # Use user-specific document query to ensure isolation
+        from modules.load_vectorstore import query_user_documents
+        matches = query_user_documents(embedded_query, user_id, top_k=10)
 
-        logger.info(f"Vector store query returned {len(res.get('matches', []))} matches")
+        logger.info(f"Vector store query returned {len(matches)} matches for user {user_id}")
 
         docs = []
-        for match in res.get("matches", []):
+        seen_filenames = set()  # Track which files we've seen to avoid duplicates
+        
+        for match in matches:
             metadata = match.get("metadata", {})
             # Try to get text content from metadata
             text_content = metadata.get("text", "")
@@ -38,17 +47,37 @@ async def ask_question(question: str = Form(...), patient_history: Optional[str]
             if not text_content and "page_content" in metadata:
                 text_content = metadata.get("page_content", "")
             
+            # Get filename for tracking
+            filename = metadata.get("filename", "unknown")
+            
+            # Verify this document belongs to the requesting user
+            document_user_id = metadata.get("user_id", "")
+            if document_user_id != user_id:
+                logger.warning(f"Document {filename} belongs to user {document_user_id}, not requesting user {user_id}")
+                continue
+                
+            # Skip if we've already seen this file (to avoid duplicate content)
+            if filename in seen_filenames:
+                logger.info(f"Skipping duplicate file for user {user_id}: {filename}")
+                continue
+                
             # Log the first few characters of each document for debugging
             if text_content:
-                logger.info(f"Document preview: {text_content[:100]}...")
+                logger.info(f"Document preview from {filename} for user {user_id}: {text_content[:100]}...")
+                seen_filenames.add(filename)
             else:
-                logger.warning(f"No text content found in document metadata: {metadata.keys()}")
+                logger.warning(f"No text content found in document metadata for user {user_id}: {metadata.keys()}")
+                continue
             
             doc = Document(
                 page_content=text_content,
                 metadata=metadata
             )
             docs.append(doc)
+            
+            # Limit to top 5 unique documents to avoid overwhelming the context
+            if len(docs) >= 5:
+                break
 
         class SimpleRetriever(BaseRetriever):
             tags: Optional[List[str]] = Field(default_factory=list)
@@ -67,13 +96,17 @@ async def ask_question(question: str = Form(...), patient_history: Optional[str]
             # Filter out empty documents
             valid_docs = [doc for doc in docs if doc.page_content.strip()]
             if valid_docs:
+                # Log which documents are being used
+                filenames_used = [doc.metadata.get("filename", "unknown") for doc in valid_docs]
+                logger.info(f"Using documents from files for user {user_id}: {filenames_used}")
+                
                 document_content = "\n\n".join([doc.page_content for doc in valid_docs])
-                logger.info(f"Retrieved {len(valid_docs)} relevant documents with content for context")
-                logger.info(f"Total document context length: {len(document_content)} characters")
+                logger.info(f"Retrieved {len(valid_docs)} relevant documents with content for context for user {user_id}")
+                logger.info(f"Total document context length for user {user_id}: {len(document_content)} characters")
             else:
-                logger.warning("All retrieved documents have empty content")
+                logger.warning(f"All retrieved documents have empty content for user {user_id}")
         else:
-            logger.info("No relevant documents found in vector store")
+            logger.info(f"No relevant documents found in vector store for user {user_id}")
 
         # Parse patient history if provided
         patient_context = ""
@@ -81,9 +114,9 @@ async def ask_question(question: str = Form(...), patient_history: Optional[str]
             try:
                 patient_data = json.loads(patient_history)
                 patient_context = format_patient_history(patient_data)
-                logger.info(f"Patient history context length: {len(patient_context)} characters")
+                logger.info(f"Patient history context length for user {user_id}: {len(patient_context)} characters")
             except json.JSONDecodeError as e:
-                logger.error(f"Error parsing patient history JSON: {e}")
+                logger.error(f"Error parsing patient history JSON for user {user_id}: {e}")
                 patient_context = ""
 
         # Combine document and patient context
@@ -97,11 +130,11 @@ async def ask_question(question: str = Form(...), patient_history: Optional[str]
         agent = CentralOrchestratorAgent()
         result = agent.orchestrate(question, document_context=full_context)
 
-        logger.info("query successful")
+        logger.info(f"query successful for user {user_id}")
         return result
 
     except Exception as e:
-        logger.exception("Error processing question")
+        logger.exception(f"Error processing question for user {user_id}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 def format_patient_history(patient_data):
