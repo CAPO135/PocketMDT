@@ -9,13 +9,15 @@ from pydantic import Field
 from typing import List, Optional
 from logger import logger
 import os
+import json
 
 router=APIRouter()
 
 @router.post("/ask/")
-async def ask_question(question: str = Form(...)):
+async def ask_question(question: str = Form(...), patient_history: Optional[str] = Form(None)):
     try:
         logger.info(f"user query: {question}")
+        logger.info(f"patient history provided: {patient_history is not None}")
 
         # Embed model + Pinecone setup
         pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
@@ -73,9 +75,27 @@ async def ask_question(question: str = Form(...)):
         else:
             logger.info("No relevant documents found in vector store")
 
-        # Use the CentralOrchestratorAgent to process the question with document context
+        # Parse patient history if provided
+        patient_context = ""
+        if patient_history:
+            try:
+                patient_data = json.loads(patient_history)
+                patient_context = format_patient_history(patient_data)
+                logger.info(f"Patient history context length: {len(patient_context)} characters")
+            except json.JSONDecodeError as e:
+                logger.error(f"Error parsing patient history JSON: {e}")
+                patient_context = ""
+
+        # Combine document and patient context
+        full_context = ""
+        if patient_context:
+            full_context += f"PATIENT HISTORY:\n{patient_context}\n\n"
+        if document_content:
+            full_context += f"DOCUMENT CONTEXT:\n{document_content}"
+
+        # Use the CentralOrchestratorAgent to process the question with combined context
         agent = CentralOrchestratorAgent()
-        result = agent.orchestrate(question, document_context=document_content)
+        result = agent.orchestrate(question, document_context=full_context)
 
         logger.info("query successful")
         return result
@@ -83,3 +103,46 @@ async def ask_question(question: str = Form(...)):
     except Exception as e:
         logger.exception("Error processing question")
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+def format_patient_history(patient_data):
+    """Format patient history data into a readable string for agents"""
+    formatted = []
+    
+    # Demographics
+    if patient_data.get("name"):
+        formatted.append(f"Name: {patient_data['name']}")
+    if patient_data.get("dob"):
+        formatted.append(f"Date of Birth: {patient_data['dob']}")
+    if patient_data.get("gender"):
+        formatted.append(f"Gender: {patient_data['gender']}")
+    if patient_data.get("height_ft") or patient_data.get("height_in"):
+        height = f"{patient_data.get('height_ft', 0)}' {patient_data.get('height_in', 0)}\""
+        formatted.append(f"Height: {height}")
+    if patient_data.get("weight_lbs"):
+        formatted.append(f"Weight: {patient_data['weight_lbs']} lbs")
+    
+    # Medical History
+    if patient_data.get("conditions"):
+        formatted.append("\nMedical Conditions:")
+        for condition in patient_data["conditions"]:
+            formatted.append(f"  - {condition['name']} (Diagnosed: {condition['date']})")
+    
+    if patient_data.get("medications"):
+        formatted.append("\nCurrent Medications:")
+        for med in patient_data["medications"]:
+            formatted.append(f"  - {med['name']} ({med['dosage']}) - {med['reason']}")
+    
+    if patient_data.get("family_history"):
+        formatted.append(f"\nFamily History: {', '.join(patient_data['family_history'])}")
+    
+    # Goals
+    if patient_data.get("health_goals"):
+        formatted.append(f"\nHealth Goals: {patient_data['health_goals']}")
+    
+    # Symptoms
+    if patient_data.get("symptoms"):
+        formatted.append("\nCurrent Symptoms:")
+        for symptom in patient_data["symptoms"]:
+            formatted.append(f"  - {symptom['symptom']} (Frequency: {symptom['frequency']}, Severity: {symptom['severity']}, Duration: {symptom['duration']})")
+    
+    return "\n".join(formatted)

@@ -24,6 +24,10 @@ def patient_history_page():
         ["New Profile"] + profile_names,
         key="profile_selector"
     )
+    
+    # Store selected profile in session state for chat component
+    st.session_state.selected_profile = selected_profile
+    
     if selected_profile == "New Profile":
         profile_id = st.text_input("Enter your name (unique):", key="new_profile_name")
         history_data = {}

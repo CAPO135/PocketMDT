@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.api import ask_question
+from utils.patient_history_store import get_history
 
 
 def render_chat():
@@ -18,7 +19,12 @@ def render_chat():
         st.chat_message("user").markdown(user_input)
         st.session_state.messages.append({"role":"user","content":user_input})
 
-        response=ask_question(user_input)
+        # Get patient history if a profile is selected
+        patient_history = None
+        if "selected_profile" in st.session_state and st.session_state.selected_profile != "New Profile":
+            patient_history = get_history(st.session_state.selected_profile)
+
+        response=ask_question(user_input, patient_history)
         if response.status_code==200:
             data=response.json()
             answer = (

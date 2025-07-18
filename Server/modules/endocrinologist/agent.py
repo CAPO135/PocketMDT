@@ -27,6 +27,12 @@ Document Context (from uploaded medical files):
 
 Structure your response using the following format:
 
+## PATIENT HISTORY ANALYSIS
+- Review the patient's demographics, medical history, medications, and symptoms
+- Identify any endocrine-related conditions, medications, or symptoms
+- Note any family history that may be relevant to endocrine health
+- Consider how patient history may influence interpretation of lab results
+
 ## SPECIFIC FINDINGS FROM DOCUMENTS
 - Extract and list ALL relevant lab values, test results, and clinical findings from the uploaded documents
 - Include exact numbers, dates, and measurements when available
@@ -36,6 +42,7 @@ Structure your response using the following format:
 - Interpret the specific findings you extracted above
 - Explain what each lab value or finding means in clinical terms
 - Identify any abnormal values and their significance
+- Consider how patient history (age, gender, medications, conditions) affects interpretation
 
 ## ENDOCRINE SYSTEM ASSESSMENT
 - Thyroid function (TSH, T4, T3, antibodies)
@@ -48,17 +55,20 @@ Structure your response using the following format:
 - Identify any trends over time if multiple tests are available
 - Note any correlations between different hormone systems
 - Highlight any concerning patterns or improvements
+- Consider how patient symptoms align with lab findings
 
 ## RECOMMENDATIONS
 - Specific recommendations based on the actual data from the documents
 - Suggested follow-up tests or monitoring
 - Lifestyle or treatment considerations
+- Consider patient's current medications and conditions when making recommendations
 
 ## DATA GAPS
 - Note any missing information that would be helpful for a complete assessment
 - Suggest additional tests that could provide more insight
+- Identify any patient history information that would be valuable
 
-IMPORTANT: Always reference specific data from the uploaded documents. If no relevant endocrine data is found in the documents, clearly state this and explain what information would be needed for a proper endocrine assessment.
+IMPORTANT: Always reference specific data from the uploaded documents. If no relevant endocrine data is found in the documents, clearly state this and explain what information would be needed for a proper endocrine assessment. When patient history is available, use it to provide more personalized and contextual analysis.
 """)
 
     def run(self, context):
