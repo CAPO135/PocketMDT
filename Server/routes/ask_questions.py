@@ -170,31 +170,34 @@ def format_patient_history(patient_data):
         formatted.append(f"Date of Birth: {patient_data['dob']}")
     if patient_data.get("gender"):
         formatted.append(f"Gender: {patient_data['gender']}")
-    if patient_data.get("height_ft") or patient_data.get("height_in"):
-        height = f"{patient_data.get('height_ft', 0)}' {patient_data.get('height_in', 0)}\""
-        formatted.append(f"Height: {height}")
+    if patient_data.get("height_ft") is not None or patient_data.get("height_in") is not None:
+        height_ft = patient_data.get('height_ft', 0) or 0
+        height_in = patient_data.get('height_in', 0) or 0
+        if height_ft > 0 or height_in > 0:
+            height = f"{height_ft}' {height_in}\""
+            formatted.append(f"Height: {height}")
     if patient_data.get("weight_lbs"):
         formatted.append(f"Weight: {patient_data['weight_lbs']} lbs")
     
     # Medical History
-    if patient_data.get("conditions") and isinstance(patient_data["conditions"], list):
+    if patient_data.get("conditions") and isinstance(patient_data["conditions"], list) and patient_data["conditions"]:
         formatted.append("\nMedical Conditions:")
         for condition in patient_data["conditions"]:
-            if isinstance(condition, dict):
+            if isinstance(condition, dict) and condition.get('name'):
                 name = condition.get('name', 'Unknown')
                 date = condition.get('date', 'Unknown date')
                 formatted.append(f"  - {name} (Diagnosed: {date})")
     
-    if patient_data.get("medications") and isinstance(patient_data["medications"], list):
+    if patient_data.get("medications") and isinstance(patient_data["medications"], list) and patient_data["medications"]:
         formatted.append("\nCurrent Medications:")
         for med in patient_data["medications"]:
-            if isinstance(med, dict):
+            if isinstance(med, dict) and med.get('name'):
                 name = med.get('name', 'Unknown')
                 dosage = med.get('dosage', 'Unknown dosage')
                 reason = med.get('reason', 'Unknown reason')
                 formatted.append(f"  - {name} ({dosage}) - {reason}")
     
-    if patient_data.get("family_history") and isinstance(patient_data["family_history"], list):
+    if patient_data.get("family_history") and isinstance(patient_data["family_history"], list) and patient_data["family_history"]:
         formatted.append(f"\nFamily History: {', '.join(patient_data['family_history'])}")
     
     # Goals
@@ -202,10 +205,10 @@ def format_patient_history(patient_data):
         formatted.append(f"\nHealth Goals: {patient_data['health_goals']}")
     
     # Symptoms
-    if patient_data.get("symptoms") and isinstance(patient_data["symptoms"], list):
+    if patient_data.get("symptoms") and isinstance(patient_data["symptoms"], list) and patient_data["symptoms"]:
         formatted.append("\nCurrent Symptoms:")
         for symptom in patient_data["symptoms"]:
-            if isinstance(symptom, dict):
+            if isinstance(symptom, dict) and symptom.get('symptom'):
                 symptom_name = symptom.get('symptom', 'Unknown')
                 frequency = symptom.get('frequency', 'Unknown')
                 severity = symptom.get('severity', 'Unknown')
