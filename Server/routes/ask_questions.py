@@ -112,12 +112,29 @@ async def ask_question(
         patient_context = ""
         if patient_history:
             try:
-                patient_data = json.loads(patient_history)
-                patient_context = format_patient_history(patient_data)
-                logger.info(f"Patient history context length for user {user_id}: {len(patient_context)} characters")
-            except json.JSONDecodeError as e:
-                logger.error(f"Error parsing patient history JSON for user {user_id}: {e}")
+                # Handle both JSON string and dict object formats
+                if isinstance(patient_history, str):
+                    if patient_history.strip():  # Check if string is not empty
+                        patient_data = json.loads(patient_history)
+                    else:
+                        logger.info(f"Empty patient history string for user {user_id}")
+                        patient_context = ""
+                        patient_data = None
+                else:
+                    patient_data = patient_history
+                
+                if patient_data:
+                    patient_context = format_patient_history(patient_data)
+                    logger.info(f"Patient history context length for user {user_id}: {len(patient_context)} characters")
+                else:
+                    logger.info(f"No patient data available for user {user_id}")
+                    
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.error(f"Error parsing patient history for user {user_id}: {e}")
+                logger.error(f"Patient history type: {type(patient_history)}, value: {patient_history}")
                 patient_context = ""
+        else:
+            logger.info(f"No patient history provided for user {user_id}")
 
         # Combine document and patient context
         full_context = ""
@@ -139,6 +156,9 @@ async def ask_question(
 
 def format_patient_history(patient_data):
     """Format patient history data into a readable string for agents"""
+    if not patient_data or not isinstance(patient_data, dict):
+        return ""
+        
     formatted = []
     
     # Demographics
@@ -155,17 +175,24 @@ def format_patient_history(patient_data):
         formatted.append(f"Weight: {patient_data['weight_lbs']} lbs")
     
     # Medical History
-    if patient_data.get("conditions"):
+    if patient_data.get("conditions") and isinstance(patient_data["conditions"], list):
         formatted.append("\nMedical Conditions:")
         for condition in patient_data["conditions"]:
-            formatted.append(f"  - {condition['name']} (Diagnosed: {condition['date']})")
+            if isinstance(condition, dict):
+                name = condition.get('name', 'Unknown')
+                date = condition.get('date', 'Unknown date')
+                formatted.append(f"  - {name} (Diagnosed: {date})")
     
-    if patient_data.get("medications"):
+    if patient_data.get("medications") and isinstance(patient_data["medications"], list):
         formatted.append("\nCurrent Medications:")
         for med in patient_data["medications"]:
-            formatted.append(f"  - {med['name']} ({med['dosage']}) - {med['reason']}")
+            if isinstance(med, dict):
+                name = med.get('name', 'Unknown')
+                dosage = med.get('dosage', 'Unknown dosage')
+                reason = med.get('reason', 'Unknown reason')
+                formatted.append(f"  - {name} ({dosage}) - {reason}")
     
-    if patient_data.get("family_history"):
+    if patient_data.get("family_history") and isinstance(patient_data["family_history"], list):
         formatted.append(f"\nFamily History: {', '.join(patient_data['family_history'])}")
     
     # Goals
@@ -173,9 +200,14 @@ def format_patient_history(patient_data):
         formatted.append(f"\nHealth Goals: {patient_data['health_goals']}")
     
     # Symptoms
-    if patient_data.get("symptoms"):
+    if patient_data.get("symptoms") and isinstance(patient_data["symptoms"], list):
         formatted.append("\nCurrent Symptoms:")
         for symptom in patient_data["symptoms"]:
-            formatted.append(f"  - {symptom['symptom']} (Frequency: {symptom['frequency']}, Severity: {symptom['severity']}, Duration: {symptom['duration']})")
+            if isinstance(symptom, dict):
+                symptom_name = symptom.get('symptom', 'Unknown')
+                frequency = symptom.get('frequency', 'Unknown')
+                severity = symptom.get('severity', 'Unknown')
+                duration = symptom.get('duration', 'Unknown')
+                formatted.append(f"  - {symptom_name} (Frequency: {frequency}, Severity: {severity}, Duration: {duration})")
     
     return "\n".join(formatted)
