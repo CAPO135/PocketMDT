@@ -31,6 +31,16 @@ def render_chat():
         patient_history = None
         if user_id:
             patient_history = get_history(user_id)
+            # Additional validation to ensure we have proper data
+            if patient_history and isinstance(patient_history, dict):
+                # Check if the data has the expected structure
+                required_keys = ["name", "dob", "gender"]
+                if not all(key in patient_history for key in required_keys):
+                    print(f"Warning: Patient history for {user_id} missing required keys")
+                    patient_history = None
+            elif patient_history:
+                print(f"Warning: Patient history for {user_id} is not a dictionary: {type(patient_history)}")
+                patient_history = None
 
         response = ask_question(user_input, user_id, patient_history)
         if response.status_code == 200:

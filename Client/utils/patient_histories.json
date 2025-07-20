@@ -1,0 +1,25 @@
+{
+  "William L": {
+    "name": "William L",
+    "dob": "1990-01-01",
+    "gender": "Male",
+    "height_ft": 6,
+    "height_in": 0,
+    "weight_lbs": 180,
+    "conditions": [],
+    "medications": [],
+    "family_history": [
+      "Diabetes",
+      "Heart Disease"
+    ],
+    "health_goals": "Improve overall health",
+    "symptoms": [
+      {
+        "symptom": "Fatigue",
+        "frequency": "Daily",
+        "severity": "Moderate",
+        "duration": "2 weeks"
+      }
+    ]
+  }
+}

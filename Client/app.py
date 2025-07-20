@@ -127,9 +127,11 @@ def patient_history_page():
                 if remove_med != "None":
                     idx = [f"{m['name']} ({m['dosage']}) - {m['reason']}" for m in medications].index(remove_med)
                     medications.pop(idx)
-                # Add new symptom if provided
-                if new_symptom:
+                # Add new symptom if provided (only if all fields are filled)
+                if new_symptom and new_freq and new_severity and new_duration:
                     symptoms.append({"symptom": new_symptom, "frequency": new_freq, "severity": new_severity, "duration": new_duration})
+                elif new_symptom:
+                    st.warning("Please fill in all symptom fields (frequency, severity, duration)")
                 # Remove selected symptom if chosen
                 if remove_symptom != "None":
                     idx = [f"{s['symptom']} - {s['frequency']} - {s['severity']} - {s['duration']}" for s in symptoms].index(remove_symptom)
@@ -147,6 +149,8 @@ def patient_history_page():
                     "health_goals": health_goals,
                     "symptoms": symptoms
                 }
+                # Debug: Print the data being saved
+                print(f"Saving profile data for {profile_id}: {data}")
                 save_history(profile_id, data)
                 st.success(f"Profile '{profile_id}' saved!")
 

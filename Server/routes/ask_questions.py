@@ -22,6 +22,8 @@ async def ask_question(
     try:
         logger.info(f"user query from user {user_id}: {question}")
         logger.info(f"patient history provided for user {user_id}: {patient_history is not None}")
+        if patient_history:
+            logger.info(f"patient history type: {type(patient_history)}, value: {patient_history[:100] if isinstance(patient_history, str) else str(patient_history)[:100]}")
 
         # Embed model + Pinecone setup
         pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
