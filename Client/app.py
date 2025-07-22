@@ -78,70 +78,46 @@ def patient_history_page():
             weight_lbs = st.number_input("Weight (lbs)", min_value=0, value=history_data.get("weight_lbs", 0))
 
             st.subheader("Medical Conditions")
-            
-            # Display and edit existing conditions
-            if conditions:
-                st.markdown("**Current Conditions:**")
-                for i, condition in enumerate(conditions):
-                    col1, col2, col3 = st.columns([3, 2, 1])
-                    with col1:
-                        conditions[i]["name"] = st.text_input(f"Condition {i+1}", value=condition.get("name", ""), key=f"edit_cond_name_{i}")
-                    with col2:
-                        try:
-                            cond_date = datetime.date.fromisoformat(condition.get("date", "2000-01-01"))
-                        except:
-                            cond_date = datetime.date(2000, 1, 1)
-                        conditions[i]["date"] = str(st.date_input("Date", value=cond_date, key=f"edit_cond_date_{i}"))
-                    with col3:
-                        if st.button("Delete", key=f"del_cond_{i}"):
-                            conditions.pop(i)
-                            st.rerun()
-            
-            # Add new condition
-            st.markdown("**Add New Condition**")
-            col1, col2, col3 = st.columns([3, 2, 1])
-            with col1:
-                new_condition = st.text_input("Condition Name", key="new_cond_name")
-            with col2:
-                new_condition_date = st.date_input("Date of Diagnosis", key="new_cond_date", min_value=datetime.date(1930,1,1), max_value=datetime.date.today())
-            with col3:
-                if st.button("Add Condition", key="add_cond"):
-                    if new_condition:
-                        conditions.append({"name": new_condition, "date": str(new_condition_date)})
-                        st.rerun()
+            # Edit existing conditions
+            edit_cond_idx = st.selectbox(
+                "Edit Condition",
+                options=["None"] + [f"{c['name']} ({c['date']})" for c in conditions],
+                key="edit_cond_select"
+            )
+            cond_name = ""
+            cond_date = datetime.date.today()
+            if edit_cond_idx != "None" and conditions:
+                idx = [f"{c['name']} ({c['date']})" for c in conditions].index(edit_cond_idx)
+                cond_name = st.text_input("Condition Name", value=conditions[idx]["name"], key="edit_cond_name")
+                cond_date = st.date_input("Date of Diagnosis", value=datetime.date.fromisoformat(conditions[idx]["date"]), key="edit_cond_date")
+            remove_cond_idx = st.selectbox(
+                "Remove Condition",
+                options=["None"] + [f"{c['name']} ({c['date']})" for c in conditions],
+                key="remove_cond_select"
+            )
+            new_condition = st.text_input("New Condition Name", key="new_cond_name")
+            new_condition_date = st.date_input("New Condition Date", key="new_cond_date", min_value=datetime.date(1930,1,1), max_value=datetime.date.today())
 
             st.subheader("Medications")
-            
-            # Display and edit existing medications
-            if medications:
-                st.markdown("**Current Medications:**")
-                for i, medication in enumerate(medications):
-                    col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
-                    with col1:
-                        medications[i]["name"] = st.text_input(f"Medication {i+1}", value=medication.get("name", ""), key=f"edit_med_name_{i}")
-                    with col2:
-                        medications[i]["dosage"] = st.text_input("Dosage", value=medication.get("dosage", ""), key=f"edit_med_dosage_{i}")
-                    with col3:
-                        medications[i]["reason"] = st.text_input("Reason", value=medication.get("reason", ""), key=f"edit_med_reason_{i}")
-                    with col4:
-                        if st.button("Delete", key=f"del_med_{i}"):
-                            medications.pop(i)
-                            st.rerun()
-            
-            # Add new medication
-            st.markdown("**Add New Medication**")
-            col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
-            with col1:
-                new_med = st.text_input("Medication Name", key="new_med_name")
-            with col2:
-                new_dosage = st.text_input("Dosage", key="new_med_dosage")
-            with col3:
-                new_reason = st.text_input("Reason", key="new_med_reason")
-            with col4:
-                if st.button("Add Medication", key="add_med"):
-                    if new_med:
-                        medications.append({"name": new_med, "dosage": new_dosage, "reason": new_reason})
-                        st.rerun()
+            edit_med_idx = st.selectbox(
+                "Edit Medication",
+                options=["None"] + [f"{m['name']} ({m['dosage']}) - {m['reason']}" for m in medications],
+                key="edit_med_select"
+            )
+            med_name = med_dosage = med_reason = ""
+            if edit_med_idx != "None" and medications:
+                idx = [f"{m['name']} ({m['dosage']}) - {m['reason']}" for m in medications].index(edit_med_idx)
+                med_name = st.text_input("Medication Name", value=medications[idx]["name"], key="edit_med_name")
+                med_dosage = st.text_input("Dosage", value=medications[idx]["dosage"], key="edit_med_dosage")
+                med_reason = st.text_input("Reason", value=medications[idx]["reason"], key="edit_med_reason")
+            remove_med_idx = st.selectbox(
+                "Remove Medication",
+                options=["None"] + [f"{m['name']} ({m['dosage']}) - {m['reason']}" for m in medications],
+                key="remove_med_select"
+            )
+            new_med = st.text_input("New Medication Name", key="new_med_name")
+            new_dosage = st.text_input("New Dosage", key="new_med_dosage")
+            new_reason = st.text_input("New Reason", key="new_med_reason")
 
             st.subheader("Family History")
             family_history = st.text_area("Family History (comma separated)", value=",".join(history_data.get("family_history", [])))
@@ -150,7 +126,6 @@ def patient_history_page():
             health_goals = st.text_area("Health Goals", value=history_data.get("health_goals", ""))
 
             st.subheader("Symptoms")
-            
             # Display and edit existing symptoms
             if symptoms:
                 st.markdown("**Current Symptoms:**")
@@ -191,6 +166,29 @@ def patient_history_page():
             submitted = st.form_submit_button("Save/Update Profile")
 
             if submitted and profile_id:
+                # Handle add new condition
+                if new_condition:
+                    conditions.append({"name": new_condition, "date": str(new_condition_date)})
+                # Handle edit condition
+                if edit_cond_idx != "None" and cond_name:
+                    idx = [f"{c['name']} ({c['date']})" for c in conditions].index(edit_cond_idx)
+                    conditions[idx] = {"name": cond_name, "date": str(cond_date)}
+                # Handle remove condition
+                if remove_cond_idx != "None":
+                    idx = [f"{c['name']} ({c['date']})" for c in conditions].index(remove_cond_idx)
+                    conditions.pop(idx)
+                # Handle add new medication
+                if new_med:
+                    medications.append({"name": new_med, "dosage": new_dosage, "reason": new_reason})
+                # Handle edit medication
+                if edit_med_idx != "None" and med_name:
+                    idx = [f"{m['name']} ({m['dosage']}) - {m['reason']}" for m in medications].index(edit_med_idx)
+                    medications[idx] = {"name": med_name, "dosage": med_dosage, "reason": med_reason}
+                # Handle remove medication
+                if remove_med_idx != "None":
+                    idx = [f"{m['name']} ({m['dosage']}) - {m['reason']}" for m in medications].index(remove_med_idx)
+                    medications.pop(idx)
+                # Handle symptoms similarly
                 # Clean up empty values
                 conditions = [c for c in conditions if c.get("name")]
                 medications = [m for m in medications if m.get("name")]
