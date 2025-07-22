@@ -126,42 +126,28 @@ def patient_history_page():
             health_goals = st.text_area("Health Goals", value=history_data.get("health_goals", ""))
 
             st.subheader("Symptoms")
-            # Display and edit existing symptoms
-            if symptoms:
-                st.markdown("**Current Symptoms:**")
-                for i, symptom in enumerate(symptoms):
-                    col1, col2, col3, col4, col5 = st.columns([2, 1, 1, 1, 1])
-                    with col1:
-                        symptoms[i]["symptom"] = st.text_input(f"Symptom {i+1}", value=symptom.get("symptom", ""), key=f"edit_symptom_{i}")
-                    with col2:
-                        symptoms[i]["frequency"] = st.text_input("Frequency", value=symptom.get("frequency", ""), key=f"edit_freq_{i}")
-                    with col3:
-                        symptoms[i]["severity"] = st.selectbox("Severity", ["", "Mild", "Moderate", "Severe"], 
-                                                             index=["", "Mild", "Moderate", "Severe"].index(symptom.get("severity", "")), 
-                                                             key=f"edit_severity_{i}")
-                    with col4:
-                        symptoms[i]["duration"] = st.text_input("Duration", value=symptom.get("duration", ""), key=f"edit_duration_{i}")
-                    with col5:
-                        if st.button("Delete", key=f"del_symptom_{i}"):
-                            symptoms.pop(i)
-                            st.rerun()
-            
-            # Add new symptom
-            st.markdown("**Add New Symptom**")
-            col1, col2, col3, col4, col5 = st.columns([2, 1, 1, 1, 1])
-            with col1:
-                new_symptom = st.text_input("Symptom", key="new_symptom")
-            with col2:
-                new_freq = st.text_input("Frequency", key="new_freq")
-            with col3:
-                new_severity = st.selectbox("Severity", ["", "Mild", "Moderate", "Severe"], key="new_severity")
-            with col4:
-                new_duration = st.text_input("Duration", key="new_duration")
-            with col5:
-                if st.button("Add Symptom", key="add_symptom"):
-                    if new_symptom:
-                        symptoms.append({"symptom": new_symptom, "frequency": new_freq, "severity": new_severity, "duration": new_duration})
-                        st.rerun()
+            # Edit existing symptoms
+            edit_sym_idx = st.selectbox(
+                "Edit Symptom",
+                options=["None"] + [f"{s['symptom']} - {s['frequency']} - {s['severity']} - {s['duration']}" for s in symptoms],
+                key="edit_sym_select"
+            )
+            sym_name = sym_freq = sym_severity = sym_duration = ""
+            if edit_sym_idx != "None" and symptoms:
+                idx = [f"{s['symptom']} - {s['frequency']} - {s['severity']} - {s['duration']}" for s in symptoms].index(edit_sym_idx)
+                sym_name = st.text_input("Symptom", value=symptoms[idx]["symptom"], key="edit_symptom")
+                sym_freq = st.text_input("Frequency", value=symptoms[idx]["frequency"], key="edit_freq")
+                sym_severity = st.selectbox("Severity", ["", "Mild", "Moderate", "Severe"], index=["", "Mild", "Moderate", "Severe"].index(symptoms[idx].get("severity", "")), key="edit_severity")
+                sym_duration = st.text_input("Duration", value=symptoms[idx]["duration"], key="edit_duration")
+            remove_sym_idx = st.selectbox(
+                "Remove Symptom",
+                options=["None"] + [f"{s['symptom']} - {s['frequency']} - {s['severity']} - {s['duration']}" for s in symptoms],
+                key="remove_sym_select"
+            )
+            new_symptom = st.text_input("New Symptom", key="new_symptom")
+            new_freq = st.text_input("New Frequency", key="new_freq")
+            new_severity = st.selectbox("New Severity", ["", "Mild", "Moderate", "Severe"], key="new_severity")
+            new_duration = st.text_input("New Duration", key="new_duration")
 
             submitted = st.form_submit_button("Save/Update Profile")
 
@@ -188,12 +174,21 @@ def patient_history_page():
                 if remove_med_idx != "None":
                     idx = [f"{m['name']} ({m['dosage']}) - {m['reason']}" for m in medications].index(remove_med_idx)
                     medications.pop(idx)
-                # Handle symptoms similarly
+                # Handle add new symptom
+                if new_symptom:
+                    symptoms.append({"symptom": new_symptom, "frequency": new_freq, "severity": new_severity, "duration": new_duration})
+                # Handle edit symptom
+                if edit_sym_idx != "None" and sym_name:
+                    idx = [f"{s['symptom']} - {s['frequency']} - {s['severity']} - {s['duration']}" for s in symptoms].index(edit_sym_idx)
+                    symptoms[idx] = {"symptom": sym_name, "frequency": sym_freq, "severity": sym_severity, "duration": sym_duration}
+                # Handle remove symptom
+                if remove_sym_idx != "None":
+                    idx = [f"{s['symptom']} - {s['frequency']} - {s['severity']} - {s['duration']}" for s in symptoms].index(remove_sym_idx)
+                    symptoms.pop(idx)
                 # Clean up empty values
                 conditions = [c for c in conditions if c.get("name")]
                 medications = [m for m in medications if m.get("name")]
                 symptoms = [s for s in symptoms if s.get("symptom")]
-                
                 data = {
                     "name": name if name else profile_id,
                     "dob": str(dob) if dob else None,
@@ -207,7 +202,6 @@ def patient_history_page():
                     "health_goals": health_goals if health_goals else None,
                     "symptoms": symptoms
                 }
-                # Debug: Print the data being saved
                 print(f"Saving profile data for {profile_id}: {data}")
                 save_history(profile_id, data)
                 st.success(f"Profile '{profile_id}' saved!")
